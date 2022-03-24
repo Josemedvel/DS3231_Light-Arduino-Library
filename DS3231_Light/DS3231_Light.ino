@@ -1,21 +1,21 @@
 #include <Wire.h>
 
-int direccion = 0x68;
+int address = 0x68;
 
 
-int BCDToBinary(uint8_t numero){
-  uint8_t firstH = ((numero & 0b11110000) >> 4) * 10;
-  uint8_t lastH = (numero & 0b00001111);
+int BCDToBinary(uint8_t number){
+  uint8_t firstH = ((number & 0b11110000) >> 4) * 10;
+  uint8_t lastH = (number & 0b00001111);
   return firstH + lastH;
 }
-int extractHours(uint8_t numero){
-  if((numero & 0b0100000) == 0){//comprobar modo 12 horas
-    //Serial.println("Estamos en 12 horas");
-    return BCDToBinary(numero & 0b00011111);
+int extractHours(uint8_t number){
+  if((number & 0b0100000) == 0){//check 12 hours mode
+    //Serial.println("We are in 12 hours mode");
+    return BCDToBinary(number & 0b00011111);
   }
-  else{//estamos en modo 24 horas 
-    //Serial.println("Estamos en 24 horas");
-    return BCDToBinary(numero & 0b00111111);
+  else{//We are in 24 hours mode 
+    //Serial.println("We are in 24 hours mode");
+    return BCDToBinary(number & 0b00111111);
   }
 }
 
@@ -31,17 +31,17 @@ void setup() {
 
 void loop() {
   Wire.begin();
-  Wire.beginTransmission(direccion);
+  Wire.beginTransmission(address);
   Wire.write(0x0);
-  Wire.requestFrom(direccion,3);
-  uint8_t segundos =  BCDToBinary(Wire.read());
-  uint8_t minutos = BCDToBinary(Wire.read());
-  uint8_t horas = extractHours(Wire.read());
-  Serial.print(horas);
+  Wire.requestFrom(address,3);
+  uint8_t seconds =  BCDToBinary(Wire.read());
+  uint8_t minutes = BCDToBinary(Wire.read());
+  uint8_t hours = extractHours(Wire.read());
+  Serial.print(hours);
   Serial.print(":");
-  Serial.print(minutos);
+  Serial.print(minutes);
   Serial.print(":");
-  Serial.println(segundos);
+  Serial.println(seconds);
   Wire.endTransmission();
   delay(1000);
 

@@ -21,8 +21,8 @@ typedef struct DS3231_Light {
 
 
 //number control
-int BCDToBinary(uint8_t number);
-uint8_t binaryToBCD(uint8_t number);
+int BCDToBinary(uint8_t number);//converts Binary Coded Decimal to binary
+uint8_t binaryToBCD(uint8_t number);//converts binary to Binary Coded Decimal
 
 //read registers
 int readRTC();//reads current value of RTC registers

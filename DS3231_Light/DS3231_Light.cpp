@@ -19,73 +19,221 @@ uint8_t binaryToBCD(uint8_t number) {
 }
 
 //read registers
-void readRTC() {
+int readRTC() {
   Wire.begin();
   Wire.beginTransmission(ADDRESS);
   Wire.write(0x00);//first register
-  Wire.requestFrom(ADDRESS, 3);//change in the future for month and year
-  RTC.secondsData = Wire.read();
-  RTC.minutesData = Wire.read();
-  RTC.hourData = Wire.read();
-  if (!Wire.endTransmission() == 0) {
-    Serial.println("Reading error");
+  Wire.requestFrom(ADDRESS, 7);
+  RTC.seconds = Wire.read();
+  RTC.minutes = Wire.read();
+  RTC.hours = Wire.read();
+  RTC.weekDay = Wire.read();
+  RTC.dateDay = Wire.read();
+  RTC.months = Wire.read();
+  RTC.years = Wire.read();
+  if (Wire.endTransmission() != 0) {
+    return -1;//Reading error
   }
 }
 
 //getter functions
 
-int extractHour() {
-  if ((RTC.hourData & 0b0100000) == 0) { //check 12 hours mode
-    //Serial.println("We are in 12 hours mode");
-    return BCDToBinary(RTC.hourData & 0b00011111);
+int getHour() {
+  if ((RTC.hours & 0b0100000) == 0) { //check 12 hours mode
+    return BCDToBinary(RTC.hours & 0b00011111);
   }
   else { //We are in 24 hours mode
-    //Serial.println("We are in 24 hours mode");
-    return BCDToBinary(RTC.hourData & 0b00111111);
+    return BCDToBinary(RTC.hours & 0b00111111);
   }
 }
 
-int extractMinutes() {
-  return BCDToBinary(RTC.minutesData);
+int getMinutes() {
+  return BCDToBinary(RTC.minutes);
 }
 
-int extractSeconds() {
-  return BCDToBinary(RTC.secondsData);
+int getSeconds() {
+  return BCDToBinary(RTC.seconds);
 }
 
-int extractMonth(uint8_t number);
-int extractYear(uint8_t number);
+int getWeekDay() {
+  return BCDToBinary(RTC.weekDay);
+}
 
-//setter functions
-void setHour(uint8_t currHour);
-void setMinutes(uint8_t currMin);
-void setSeconds(uint8_t currSec);
-void setMonth(uint8_t currMonth);
-void setYear(int currYear);
+String getWeekDayName() {
+  return weekDayNames[RTC.weekDay - 1];
+}
 
-//print functions
-String prettyPrintTime(){//TODO
+int getMonthDay() {
+  return BCDToBinary(RTC.dateDay);
+}
+
+int getMonth() {
+  return BCDToBinary(RTC.months & 0b01111111);
+}
+
+int getYear() {
+  return getCentury() + BCDToBinary(RTC.years);
+}
+
+int getCentury() {
+  if ((RTC.months & 0b10000000) != 0b10000000) { //21st century
+    return 2000;
+  }
+  else { //20th century
+    return 1900;
+  }
+}
+
+String getDS3231Time() {
   String finalTime = "";
-  if(RTC.hourData < 10){
-    finalTime += "0"+(int)RTC.hourData;
+  int hours = getHour();
+  int minutes = getMinutes();
+  int seconds = getSeconds();
+  if (hours < 10) {
+    finalTime += "0";
+    finalTime += hours;
   }
-  else{
-    finalTime += (int)RTC.hourData;
-  }
-  finalTime += ":";
-  if(RTC.minutesData < 10){
-    finalTime += "0"+(int)RTC.minutesData;
-  }
-  else{
-    finalTime += (int)RTC.minutesData;
+  else {
+    finalTime += hours;
   }
   finalTime += ":";
-  if(RTC.secondsData < 10){
-    finalTime += "0"+(int)RTC.secondsData;
+  if (minutes < 10) {
+    finalTime += "0";
+    finalTime += minutes;
   }
-  else{
-    finalTime += (int)RTC.secondsData;
+  else {
+    finalTime += minutes;
   }
-  Serial.println(finalTime);
+  finalTime += ":";
+  if (seconds < 10) {
+    finalTime += "0";
+    finalTime += seconds;
+  }
+  else {
+    finalTime += seconds;
+  }
   return finalTime;
+}
+String getDS3231Date() {
+  String finalDate = "";
+  int dateDay = getMonthDay();
+  int months = getMonth();
+  int years = getYear();
+  if (dateDay < 10) {
+    finalDate += "0";
+    finalDate += dateDay;
+  }
+  else {
+    finalDate += dateDay;
+  }
+  finalDate += "/";
+  if (months < 10) {
+    finalDate += "0";
+    finalDate += months;
+  }
+  else {
+    finalDate += months;
+  }
+  finalDate += "/";
+  if (years < 10) {
+    finalDate += "0";
+    finalDate += years;
+  }
+  else {
+    finalDate += years;
+  }
+  return finalDate;
+}
+//setter functions
+int setHour(uint8_t currHour) {
+  Wire.begin();
+  Wire.beginTransmission(ADDRESS);
+  Wire.write(0x2);
+  uint8_t fullHour = binaryToBCD(currHour) | (RTC.hours & 0b11100000);
+  Wire.write(fullHour);
+  if (!Wire.endTransmission()) {
+    return -1;
+  }
+}
+int setMinutes(uint8_t currMin) {
+  Wire.begin();
+  Wire.beginTransmission(ADDRESS);
+  Wire.write(0x1);
+  Wire.write(binaryToBCD(currMin));
+  if (!Wire.endTransmission()) {
+    return -1;
+  }
+}
+int setSeconds(uint8_t currSec) {
+  Wire.begin();
+  Wire.beginTransmission(ADDRESS);
+  Wire.write(0x0);
+  Wire.write(binaryToBCD(currSec));
+  if (!Wire.endTransmission()) {
+    return -1;
+  }
+}
+int setMonthDay(uint8_t currDateDay) {
+  Wire.begin();
+  Wire.beginTransmission(ADDRESS);
+  Wire.write(0x4);
+  Wire.write(binaryToBCD(currDateDay));
+  if (!Wire.endTransmission()) {
+    return -1;
+  }
+  setDoW(currDateDay, getMonth(), getYear());
+  return 0;
+}
+int setMonth(uint8_t currMonth) {
+  Wire.begin();
+  Wire.beginTransmission(ADDRESS);
+  Wire.write(0x5);
+  Wire.write(binaryToBCD(currMonth) & 0b00011111);
+  if (!Wire.endTransmission()) {
+    return -1;
+  }
+  setDoW(getMonthDay(), currMonth, getYear());
+  return 0;
+}
+int setYear(int currYear) {
+  Wire.begin();
+  Wire.beginTransmission(ADDRESS);
+  Wire.write(0x6);
+  Wire.write(binaryToBCD(currYear % 100));
+  if (!Wire.endTransmission()) {
+    return -1;
+  }
+  setDoW(getMonthDay(), getMonth(), currYear);
+  return 0;
+}
+int setFullTime(uint8_t currHour, uint8_t currMin, uint8_t currSec) {
+  setHour(currHour);
+  setMinutes(currMin);
+  setSeconds(currSec);
+  return 0;
+}
+int setFullDate(int currDay, int currMonth, int currYear) {
+  setMonthDay(currDay);
+  setMonth(currMonth);
+  setYear(currYear);
+  setDoW(currDay, currMonth, currYear);
+  return 0;
+}
+int getDoW(int d, int m, int y) {
+  static int t[] = { 0, 3, 2, 5, 0, 3,
+                     5, 1, 4, 6, 2, 4
+                   };
+  y -= m < 3;
+  return ( y + y / 4 - y / 100 +
+           y / 400 + t[m - 1] + d) % 7;
+}
+int setDoW(int d, int m, int y) {
+  Wire.begin();
+  Wire.beginTransmission(ADDRESS);
+  Wire.write(0x3);
+  Wire.write(binaryToBCD(getDoW(d, m, y)));
+  if (!Wire.endTransmission()) {
+    return -1;
+  }
+  return 0;
 }

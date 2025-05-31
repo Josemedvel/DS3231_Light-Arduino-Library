@@ -10,6 +10,8 @@ int BCDToBinary(uint8_t number) {
   uint8_t lastH = (number & 0b00001111);
   return firstH + lastH;
 }
+
+
 uint8_t binaryToBCD(uint8_t number) {
   uint8_t result = 0b0;
   result |= number / 10;
@@ -31,64 +33,75 @@ int readRTC() {
   RTC.dateDay = Wire.read();
   RTC.months = Wire.read();
   RTC.years = Wire.read();
+  
   if (Wire.endTransmission() != 0) {
     return -1;//Reading error
   }
+  return 0;
 }
 
-//getter functions
 
+//getter functions
 int getHour() {
   if ((RTC.hours & 0b0100000) == 0) { //check 12 hours mode
     return BCDToBinary(RTC.hours & 0b00011111);
   }
-  else { //We are in 24 hours mode
-    return BCDToBinary(RTC.hours & 0b00111111);
-  }
+  // We are in 24 hours mode
+  return BCDToBinary(RTC.hours & 0b00111111);
 }
+
 
 int getMinutes() {
   return BCDToBinary(RTC.minutes);
 }
 
+
 int getSeconds() {
   return BCDToBinary(RTC.seconds);
 }
+
 
 int getWeekDay() {
   return BCDToBinary(RTC.weekDay);
 }
 
+
 String getWeekDayName() {
   return weekDayNames[RTC.weekDay - 1];
 }
+
 
 int getMonthDay() {
   return BCDToBinary(RTC.dateDay);
 }
 
+
 int getMonth() {
   return BCDToBinary(RTC.months & 0b01111111);
 }
+
 
 int getYear() {
   return getCentury() + BCDToBinary(RTC.years);
 }
 
+
 int getCentury() {
   if ((RTC.months & 0b10000000) != 0b10000000) { //21st century
     return 2000;
   }
-  else { //20th century
-    return 1900;
-  }
+  //20th century
+  return 1900;
 }
 
+
 String getDS3231Time() {
+  
   String finalTime = "";
   int hours = getHour();
   int minutes = getMinutes();
   int seconds = getSeconds();
+  
   if (hours < 10) {
     finalTime += "0";
     finalTime += hours;
@@ -96,7 +109,9 @@ String getDS3231Time() {
   else {
     finalTime += hours;
   }
+  
   finalTime += ":";
+  
   if (minutes < 10) {
     finalTime += "0";
     finalTime += minutes;
@@ -104,7 +119,9 @@ String getDS3231Time() {
   else {
     finalTime += minutes;
   }
+  
   finalTime += ":";
+  
   if (seconds < 10) {
     finalTime += "0";
     finalTime += seconds;
@@ -112,8 +129,11 @@ String getDS3231Time() {
   else {
     finalTime += seconds;
   }
+  
   return finalTime;
 }
+
+
 String getDS3231Date() {
   String finalDate = "";
   int dateDay = getMonthDay();
@@ -144,6 +164,8 @@ String getDS3231Date() {
   }
   return finalDate;
 }
+
+
 //setter functions
 int setHour(uint8_t currHour) {
   Wire.begin();
@@ -154,7 +176,10 @@ int setHour(uint8_t currHour) {
   if (!Wire.endTransmission()) {
     return -1;
   }
+  return 0;
 }
+
+
 int setMinutes(uint8_t currMin) {
   Wire.begin();
   Wire.beginTransmission(ADDRESS);
@@ -163,7 +188,10 @@ int setMinutes(uint8_t currMin) {
   if (!Wire.endTransmission()) {
     return -1;
   }
+  return 0;
 }
+
+
 int setSeconds(uint8_t currSec) {
   Wire.begin();
   Wire.beginTransmission(ADDRESS);
@@ -172,7 +200,10 @@ int setSeconds(uint8_t currSec) {
   if (!Wire.endTransmission()) {
     return -1;
   }
+  return 0;
 }
+
+
 int setMonthDay(uint8_t currDateDay) {
   Wire.begin();
   Wire.beginTransmission(ADDRESS);
@@ -184,6 +215,8 @@ int setMonthDay(uint8_t currDateDay) {
   setDoW(currDateDay, getMonth(), getYear());
   return 0;
 }
+
+
 int setMonth(uint8_t currMonth) {
   Wire.begin();
   Wire.beginTransmission(ADDRESS);
@@ -195,6 +228,8 @@ int setMonth(uint8_t currMonth) {
   setDoW(getMonthDay(), currMonth, getYear());
   return 0;
 }
+
+
 int setYear(int currYear) {
   Wire.begin();
   Wire.beginTransmission(ADDRESS);
@@ -206,12 +241,16 @@ int setYear(int currYear) {
   setDoW(getMonthDay(), getMonth(), currYear);
   return 0;
 }
+
+
 int setFullTime(uint8_t currHour, uint8_t currMin, uint8_t currSec) {
   setHour(currHour);
   setMinutes(currMin);
   setSeconds(currSec);
   return 0;
 }
+
+
 int setFullDate(int currDay, int currMonth, int currYear) {
   setMonthDay(currDay);
   setMonth(currMonth);
@@ -219,6 +258,8 @@ int setFullDate(int currDay, int currMonth, int currYear) {
   setDoW(currDay, currMonth, currYear);
   return 0;
 }
+
+
 int getDoW(int d, int m, int y) {
   static int t[] = { 0, 3, 2, 5, 0, 3,
                      5, 1, 4, 6, 2, 4
@@ -227,6 +268,8 @@ int getDoW(int d, int m, int y) {
   return ( y + y / 4 - y / 100 +
            y / 400 + t[m - 1] + d) % 7;
 }
+
+
 int setDoW(int d, int m, int y) {
   Wire.begin();
   Wire.beginTransmission(ADDRESS);
